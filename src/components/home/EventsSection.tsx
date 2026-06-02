@@ -30,6 +30,20 @@ function formatDate(input?: string): string | null {
   });
 }
 
+// Full date including year — shown only in the hover-expanded state, where
+// there's room for the extra context.
+function formatDateLong(input?: string): string | null {
+  if (!input) return null;
+  const d = new Date(input);
+  if (isNaN(d.getTime())) return input;
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function EventsSection({
   initialEvents = [],
 }: EventsSectionProps) {
@@ -69,13 +83,20 @@ export default function EventsSection({
     const link = eventUrl(ev);
     const isExternal = link.startsWith("http");
     const date = formatDate(ev?.eventDate || ev?.date);
+    const dateLong = formatDateLong(ev?.eventDate || ev?.date);
+    const host = ev?.subDomain?.name;
 
     const card = (
       <Box
         sx={{
           position: "relative",
+          // Explicit width + height (no aspectRatio) so the card can grow
+          // horizontally on hover without dragging its height with it —
+          // otherwise the whole rail row would jump vertically on hover.
+          // Heights below equal width * 16/9 so the compact state still
+          // looks identical to the previous 9:16 portrait poster.
           width: { xs: 140, sm: 160, md: 180 },
-          aspectRatio: "9 / 16",
+          height: { xs: 249, sm: 284, md: 320 },
           flexShrink: 0,
           scrollSnapAlign: "start",
           borderRadius: 2.5,
@@ -83,11 +104,23 @@ export default function EventsSection({
           bgcolor: "#0f172a",
           boxShadow: "0 6px 16px rgba(15,23,42,0.12)",
           cursor: "pointer",
-          transition: "all .3s cubic-bezier(0.22, 1, 0.36, 1)",
-          "&:hover": {
-            transform: "translateY(-4px) scale(1.02)",
-            boxShadow: "0 16px 32px rgba(15,23,42,0.2)",
-            "& .ev-img": { transform: "scale(1.1)" },
+          transition:
+            "width .35s cubic-bezier(0.22, 1, 0.36, 1), transform .35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow .35s",
+          // Only fire the expand effect on devices that actually support
+          // hovering. Touch devices keep the compact tap-to-open behavior.
+          "@media (hover: hover)": {
+            "&:hover": {
+              width: { xs: 240, sm: 300, md: 340 },
+              transform: "translateY(-4px)",
+              boxShadow: "0 18px 36px rgba(15,23,42,0.22)",
+              "& .ev-img": { transform: "scale(1.08)" },
+              "& .ev-title": { WebkitLineClamp: 3 },
+              "& .ev-extra": {
+                opacity: 1,
+                transform: "translateY(0)",
+                pointerEvents: "auto",
+              },
+            },
           },
         }}
       >
@@ -171,6 +204,7 @@ export default function EventsSection({
           }}
         >
           <Typography
+            className="ev-title"
             sx={{
               fontFamily: FONT_HEAD,
               fontSize: { xs: 14, md: 15 },
@@ -182,10 +216,82 @@ export default function EventsSection({
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
               textShadow: "0 2px 6px rgba(0,0,0,0.5)",
+              transition: "all .3s ease",
             }}
           >
             {ev?.title || "Untitled Event"}
           </Typography>
+
+          {/*
+            Hover-only "extra" panel. Hidden until the card expands; the
+            parent's @media (hover: hover) &:hover rule reveals it.
+            pointerEvents is disabled while hidden so it can't intercept
+            clicks meant for the card link beneath.
+          */}
+          <Box
+            className="ev-extra"
+            sx={{
+              mt: 0.75,
+              opacity: 0,
+              transform: "translateY(6px)",
+              pointerEvents: "none",
+              transition:
+                "opacity .25s ease .05s, transform .3s cubic-bezier(0.22, 1, 0.36, 1) .05s",
+            }}
+          >
+            {dateLong && (
+              <Typography
+                sx={{
+                  fontFamily: FONT_BODY,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: "rgba(255,255,255,0.85)",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                }}
+              >
+                {dateLong}
+              </Typography>
+            )}
+            {host && (
+              <Typography
+                sx={{
+                  fontFamily: FONT_BODY,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.7)",
+                  mt: 0.25,
+                  display: "-webkit-box",
+                  WebkitLineClamp: 1,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                }}
+              >
+                Hosted by {host}
+              </Typography>
+            )}
+            <Box
+              sx={{
+                mt: 1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.4,
+                px: 1.1,
+                py: 0.4,
+                borderRadius: 999,
+                background: ACCENT_GRADIENT,
+                color: "#fff",
+                fontFamily: FONT_HEAD,
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.02em",
+                boxShadow: "0 6px 14px rgba(247,127,0,0.35)",
+              }}
+            >
+              View event
+              <ArrowForwardRoundedIcon sx={{ fontSize: 12 }} />
+            </Box>
+          </Box>
         </Box>
       </Box>
     );
@@ -344,7 +450,11 @@ export default function EventsSection({
           </Typography>
         </Box>
       ) : (
-        <StoryRail accentColor="#c2410c" deps={[visible.length]}>
+        <StoryRail
+          accentColor="#c2410c"
+          deps={[visible.length]}
+          autoScroll
+        >
           {visible.map((ev, i) => (
             <Box key={ev.id || i}>{renderCard(ev)}</Box>
           ))}

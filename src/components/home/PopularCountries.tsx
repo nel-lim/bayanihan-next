@@ -28,8 +28,9 @@ const sx = {
     my: 3,
   },
   chipsWrap: {
-    display: { xs: "block", md: "flex", lg: "flex" },
+    display: "flex",
     flexWrap: "wrap",
+    justifyContent: "center",
     gap: 1.5,
     rowGap: 2,
     mt: 2,

@@ -17,6 +17,14 @@ interface StoryRailProps {
   accentColor?: string;
   /** Re-evaluate arrow visibility when this changes (e.g. data loaded). */
   deps?: unknown[];
+  /**
+   * When true, the rail continuously scrolls itself to the right.
+   * Pauses on hover, during user drag, and when the tab is hidden.
+   * Fully disabled when the user prefers reduced motion.
+   */
+  autoScroll?: boolean;
+  /** Auto-scroll speed in pixels per second. Defaults to 40. */
+  autoScrollSpeed?: number;
 }
 
 const DRAG_THRESHOLD = 6;
@@ -25,6 +33,8 @@ export default function StoryRail({
   children,
   accentColor = "#0f172a",
   deps = [],
+  autoScroll = false,
+  autoScrollSpeed = 40,
 }: StoryRailProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
@@ -61,6 +71,79 @@ export default function StoryRail({
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [update, ...deps]);
+
+  // Auto-scroll loop. Runs only when `autoScroll` is on. Pauses on hover,
+  // during user drag, and when the tab is hidden. Fully disabled when the
+  // user has prefers-reduced-motion enabled — animation accessibility.
+  useEffect(() => {
+    if (!autoScroll) return;
+    const el = ref.current;
+    if (!el) return;
+
+    // Respect the OS-level reduced-motion preference: bail entirely.
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mql.matches) return;
+
+    let hovered = false;
+    let rafId = 0;
+    let lastTs = performance.now();
+    // Accumulator for sub-pixel deltas. Some browsers floor fractional
+    // scrollLeft assignments to whole integers, so at slow speeds
+    // (< ~1 px/frame) the scroll never visibly advances. Track the
+    // fractional remainder and only apply whole pixels.
+    let frac = 0;
+
+    const onEnter = () => {
+      hovered = true;
+    };
+    const onLeave = () => {
+      hovered = false;
+    };
+    const onVisibility = () => {
+      // Reset the timestamp so we don't fast-forward by the hidden duration
+      // when the tab comes back into focus.
+      lastTs = performance.now();
+    };
+
+    el.addEventListener("mouseenter", onEnter);
+    el.addEventListener("mouseleave", onLeave);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    const tick = (now: number) => {
+      const dt = Math.min((now - lastTs) / 1000, 0.1); // cap at 100ms per frame
+      lastTs = now;
+
+      const canScroll = el.scrollWidth > el.clientWidth + 1;
+      if (
+        canScroll &&
+        !hovered &&
+        !dragRef.current.active &&
+        !document.hidden
+      ) {
+        frac += autoScrollSpeed * dt;
+        const step = Math.floor(frac);
+        if (step > 0) {
+          frac -= step;
+          const max = el.scrollWidth - el.clientWidth;
+          const next = el.scrollLeft + step;
+          // When we hit the end, wrap silently to the start so the rail
+          // keeps cycling. Instant jump (rather than smooth) avoids the
+          // long visible rewind animation.
+          el.scrollLeft = next >= max - 0.5 ? 0 : next;
+        }
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      el.removeEventListener("mouseenter", onEnter);
+      el.removeEventListener("mouseleave", onLeave);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [autoScroll, autoScrollSpeed]);
 
   const scrollByDir = (dir: -1 | 1) => {
     const el = ref.current;
@@ -135,7 +218,14 @@ export default function StoryRail({
           display: "flex",
           gap: 1.25,
           overflowX: "auto",
-          scrollSnapType: "x mandatory",
+          // With auto-scroll on, the rAF loop increments scrollLeft by
+          // sub-pixel amounts each frame (40 px/s ÷ 60fps ≈ 0.7 px). Any
+          // active snap (`mandatory` or `proximity`) snaps those tiny
+          // steps back to the nearest card edge every tick and freezes
+          // the scroll in place. So disable snap entirely when auto-
+          // scrolling — a ticker-style rail reads fine without snap, and
+          // manual drag still works.
+          scrollSnapType: autoScroll ? "none" : "x mandatory",
           scrollPaddingLeft: { xs: 16, md: 32, lg: 40 },
           mx: { xs: -2, md: -4, lg: -5 },
           px: { xs: 2, md: 4, lg: 5 },

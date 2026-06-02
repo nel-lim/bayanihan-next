@@ -103,13 +103,19 @@ export default function RestaurantsSection({
     const image = r?.photo || r?.cover || r?.image;
     const isExternal = link.startsWith("http");
     const code = countryToCode(r?.country);
+    const locationLong = [r?.city, r?.country].filter(Boolean).join(", ");
+    const cuisine = r?.category;
 
     const card = (
       <Box
         sx={{
           position: "relative",
+          // Same approach as EventsSection: explicit width + height (no
+          // aspectRatio) so we can animate width on hover without dragging
+          // the rail row's height with it. Heights = width * 16/9 to
+          // preserve the original 9:16 portrait look at rest.
           width: { xs: 140, sm: 160, md: 180 },
-          aspectRatio: "9 / 16",
+          height: { xs: 249, sm: 284, md: 320 },
           flexShrink: 0,
           scrollSnapAlign: "start",
           borderRadius: 2.5,
@@ -117,11 +123,23 @@ export default function RestaurantsSection({
           bgcolor: "#0f172a",
           boxShadow: "0 6px 16px rgba(15,23,42,0.12)",
           cursor: "pointer",
-          transition: "all .3s cubic-bezier(0.22, 1, 0.36, 1)",
-          "&:hover": {
-            transform: "translateY(-4px) scale(1.02)",
-            boxShadow: "0 16px 32px rgba(15,23,42,0.2)",
-            "& .rest-img": { transform: "scale(1.1)" },
+          transition:
+            "width .35s cubic-bezier(0.22, 1, 0.36, 1), transform .35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow .35s",
+          // Only fire the expand effect on devices that actually support
+          // hovering. Touch devices keep the compact tap-to-open behavior.
+          "@media (hover: hover)": {
+            "&:hover": {
+              width: { xs: 240, sm: 300, md: 340 },
+              transform: "translateY(-4px)",
+              boxShadow: "0 18px 36px rgba(15,23,42,0.22)",
+              "& .rest-img": { transform: "scale(1.08)" },
+              "& .rest-name": { WebkitLineClamp: 3 },
+              "& .rest-extra": {
+                opacity: 1,
+                transform: "translateY(0)",
+                pointerEvents: "auto",
+              },
+            },
           },
         }}
       >
@@ -241,6 +259,7 @@ export default function RestaurantsSection({
             </Box>
           )}
           <Typography
+            className="rest-name"
             sx={{
               fontFamily: FONT_HEAD,
               fontSize: { xs: 14, md: 15 },
@@ -253,10 +272,86 @@ export default function RestaurantsSection({
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
               textShadow: "0 2px 6px rgba(0,0,0,0.5)",
+              transition: "all .3s ease",
             }}
           >
             {r?.name || "Restaurant"}
           </Typography>
+
+          {/*
+            Hover-only "extra" panel — revealed by the parent's
+            @media (hover: hover) &:hover rule. pointerEvents is off
+            while hidden so it never intercepts clicks on the card link.
+          */}
+          <Box
+            className="rest-extra"
+            sx={{
+              mt: 0.75,
+              opacity: 0,
+              transform: "translateY(6px)",
+              pointerEvents: "none",
+              transition:
+                "opacity .25s ease .05s, transform .3s cubic-bezier(0.22, 1, 0.36, 1) .05s",
+            }}
+          >
+            {locationLong && (
+              <Typography
+                sx={{
+                  fontFamily: FONT_BODY,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: "rgba(255,255,255,0.85)",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 1,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {locationLong}
+              </Typography>
+            )}
+            {cuisine && (
+              <Typography
+                sx={{
+                  fontFamily: FONT_BODY,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.7)",
+                  mt: 0.25,
+                  textTransform: "capitalize",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 1,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                }}
+              >
+                {cuisine}
+              </Typography>
+            )}
+            <Box
+              sx={{
+                mt: 1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.4,
+                px: 1.1,
+                py: 0.4,
+                borderRadius: 999,
+                background: ACCENT_GRADIENT,
+                color: "#fff",
+                fontFamily: FONT_HEAD,
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.02em",
+                boxShadow: "0 6px 14px rgba(6,182,212,0.35)",
+              }}
+            >
+              View restaurant
+              <ArrowForwardRoundedIcon sx={{ fontSize: 12 }} />
+            </Box>
+          </Box>
         </Box>
       </Box>
     );
@@ -414,7 +509,11 @@ export default function RestaurantsSection({
           </Typography>
         </Box>
       ) : (
-        <StoryRail accentColor="#0e7490" deps={[visible.length]}>
+        <StoryRail
+          accentColor="#0e7490"
+          deps={[visible.length]}
+          autoScroll
+        >
           {visible.map((r, i) => (
             <Box key={r.id || i}>{renderCard(r)}</Box>
           ))}

@@ -20,6 +20,12 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useLocale } from "@/providers/LocaleProvider";
 import { useAuthProvider } from "@/providers/AuthProvider";
 import type { Locale } from "@/types";
+import {
+  ARTICLE_CATEGORIES,
+  ARTICLES_BASE_PATH,
+  articleUrl,
+  getArticlesByCategory,
+} from "@/lib/articles";
 
 const BG = "#ECEAE3";
 const LOGO_SRC = "/profile/logo.png";
@@ -302,6 +308,56 @@ export default function Footer() {
             />
           </Grid>
         </Grid>
+
+        {/* Explore More — editorial backlinks. Sourced from src/lib/articles
+            so these links can never drift from the pages under /articles. */}
+        <Box sx={{ mt: { xs: 3, md: 4 } }}>
+          <Box
+            sx={{
+              borderTop: "1px solid rgba(0,0,0,0.10)",
+              pt: { xs: 3, md: 3.5 },
+              mb: { xs: 2, md: 2.5 },
+              display: "flex",
+              alignItems: "baseline",
+              justifyContent: { xs: "center", md: "space-between" },
+              flexWrap: "wrap",
+              gap: 1,
+            }}
+          >
+            <Typography sx={{ fontWeight: 800, fontSize: { xs: 16, md: 18 }, color: "#111" }}>
+              Explore More
+            </Typography>
+            <MLink
+              component={NextLink}
+              href={HOSTNAME + ARTICLES_BASE_PATH}
+              underline="none"
+              sx={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#f67f00",
+                display: "inline-flex",
+                alignItems: "center",
+                "&:hover": { color: "#c2410c" },
+              }}
+            >
+              View all articles
+              <ChevronRightIcon sx={{ fontSize: 16 }} />
+            </MLink>
+          </Box>
+          <Grid container spacing={{ xs: 1.5, md: 3 }} columns={{ xs: 12, md: 12 }}>
+            {ARTICLE_CATEGORIES.map((cat) => (
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={cat.key}>
+                <FooterColumn
+                  title={cat.title}
+                  links={getArticlesByCategory(cat.key).map((a) => ({
+                    to: HOSTNAME + articleUrl(a.slug),
+                    label: a.title,
+                  }))}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
 
         {/* Row 1: CTA buttons + social icons */}
         <Box

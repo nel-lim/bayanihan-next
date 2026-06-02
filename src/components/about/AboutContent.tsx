@@ -447,40 +447,6 @@ export default function AboutContent() {
         overflow: "hidden",
       }}
     >
-      {/* Floating decorative blobs */}
-      <Box
-        aria-hidden
-        sx={{
-          position: "absolute",
-          top: 80,
-          left: -60,
-          width: 240,
-          height: 240,
-          background:
-            "linear-gradient(135deg, rgba(247,127,0,0.18) 0%, rgba(255,209,102,0.18) 100%)",
-          animation: `${blob} 18s ease-in-out infinite`,
-          filter: "blur(2px)",
-          zIndex: 0,
-          display: { xs: "none", md: "block" },
-        }}
-      />
-      <Box
-        aria-hidden
-        sx={{
-          position: "absolute",
-          top: 480,
-          right: -80,
-          width: 280,
-          height: 280,
-          background:
-            "linear-gradient(135deg, rgba(251,168,51,0.16) 0%, rgba(247,127,0,0.16) 100%)",
-          animation: `${blob} 22s ease-in-out infinite reverse`,
-          filter: "blur(2px)",
-          zIndex: 0,
-          display: { xs: "none", md: "block" },
-        }}
-      />
-
       {/* ── HERO ────────────────────────────────────────────────────── */}
       <Container sx={{ position: "relative", pt: { xs: 6, md: 10 } }}>
         <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">

@@ -5,6 +5,8 @@
 
 import type { MetadataRoute } from "next";
 import { serverGet } from "@/lib/serverFetch";
+import { POPULAR_ORDER } from "@/lib/popularCountries";
+import { ARTICLES, articleUrl } from "@/lib/articles";
 import type { BayanihanEvent, NewsArticle, Restaurant } from "@/types";
 
 // metadataBase is set in app/layout.tsx — Next applies it automatically to
@@ -24,7 +26,9 @@ const STATIC_PATHS: Array<{
   { path: "/news", priority: 0.9, changeFrequency: "daily" },
   { path: "/global-calendar", priority: 0.8, changeFrequency: "daily" },
   { path: "/about", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/articles", priority: 0.6, changeFrequency: "weekly" },
   { path: "/contact-us", priority: 0.5, changeFrequency: "monthly" },
+  { path: "/sitemap", priority: 0.3, changeFrequency: "weekly" },
 ];
 
 interface EventsResponse {
@@ -127,6 +131,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
+  // Popular country pages live under /country/<code>. Only the 14 we
+  // surface on the homepage are guaranteed to have content worth indexing,
+  // so we don't emit one entry per ISO country.
+  for (const cc of POPULAR_ORDER) {
+    entries.push({
+      url: `${SITE_URL}/country/${cc.toLowerCase()}`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.6,
+    });
+  }
+
   // News articles live under /news/<slug>.
   for (const article of news) {
     if (!article.slug) continue;
@@ -137,6 +153,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: lastModified ? new Date(lastModified) : now,
       changeFrequency: "weekly",
       priority: 0.7,
+    });
+  }
+
+  // Editorial / backlink articles live under /articles/<slug>. These are
+  // static content (defined in src/lib/articles.ts), so no network call.
+  for (const article of ARTICLES) {
+    entries.push({
+      url: `${SITE_URL}${articleUrl(article.slug)}`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
     });
   }
 
